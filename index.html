@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Secret Santa QR Generator</title>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <style>
+    :root {
+      --bg: #0f172a;        /* slate-900 */
+      --panel: #111827;     /* gray-900 */
+      --muted: #94a3b8;     /* slate-400 */
+      --text: #e5e7eb;      /* gray-200 */
+      --accent: #22d3ee;    /* cyan-400 */
+      --accent-2: #60a5fa;  /* blue-400 */
+      --card: #0b1220;      /* deeper panel */
+      --warn: #fbbf24;      /* amber-400 */
+      --err: #ef4444;       /* red-500 */
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+      background: radial-gradient(1200px 800px at 20% -10%, #0b1220 0%, #0f172a 40%, #0a0f1d 100%), var(--bg);
+      color: var(--text);
+      min-height: 100svh;
+    }
+    header {
+      padding: 28px 20px 8px;
+      text-align: center;
+    }
+    h1 {
+      margin: 0;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      font-size: clamp(22px, 2.2vw + 14px, 36px);
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    p.sub {
+      margin: 8px auto 0;
+      color: var(--muted);
+      max-width: 800px;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 20px auto 40px;
+      padding: 0 16px;
+    }
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 40%) , var(--panel);
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+      border-radius: 18px;
+      padding: 18px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    @media (min-width: 900px) {
+      .grid {
+        grid-template-columns: 360px 1fr;
+      }
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 240px;
+      resize: vertical;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: #0a0f1d;
+      color: var(--text);
+      padding: 14px 12px;
+      border-radius: 12px;
+      outline: none;
+      font-size: 14px;
+    }
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .btn {
+      appearance: none;
+      border: none;
+      cursor: pointer;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      letter-spacing: .3px;
+      color: #0b1220;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: transform .04s ease, filter .2s ease;
+    }
+    .btn:active { transform: translateY(1px) }
+    .btn.secondary {
+      color: var(--text);
+      background: #0b1220;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .tiny {
+      font-size: 12px; color: var(--muted);
+    }
+    .options {
+      display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .switch {
+      display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted);
+      user-select: none; cursor: pointer;
+    }
+    .switch input { accent-color: var(--accent-2); width: 18px; height: 18px; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 14px;
+    }
+    .card {
+      background: radial-gradient(600px 200px at 0% -10%, rgba(96,165,250,0.06), transparent 40%), var(--card);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      padding: 14px;
+      min-height: 260px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .who {
+      font-weight: 800;
+      font-size: 16px;
+      color: #e2e8f0;
+      letter-spacing: .2px;
+    }
+    .qr {
+      display: grid;
+      place-items: center;
+      background: #0a0f1d;
+      border: 1px dashed rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 10px;
+      min-height: 180px;
+    }
+    .meta {
+      margin-top: auto;
+      font-size: 12px; color: var(--muted);
+    }
+    .note {
+      margin-top: 10px; font-size: 13px; color: var(--warn);
+    }
+    .error {
+      margin-top: 8px; color: var(--err); font-weight: 700;
+    }
+    footer {
+      text-align: center;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .hiddenText {
+      display: none;
+      margin-top: 8px;
+      font-size: 13px;
+      color: #d1fae5;
+      background: rgba(34,211,238,0.08);
+      border: 1px solid rgba(34,211,238,0.25);
+      border-radius: 10px;
+      padding: 8px;
+    }
+    .showtext-toggle {
+      margin-left: auto;
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--muted); cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Secret Santa — QR Codes</h1>
+    <p class="sub">Paste participant names (one per line). We’ll generate a no-self-match pairing and one QR code per person.<br/>
+      Each QR contains the giver’s name and who they should give a present to.</p>
+  </header>
+
+  <div class="container">
+    <div class="panel grid">
+      <section>
+        <label for="names">Names (one per line)</label>
+        <textarea id="names" placeholder="Alice
+Bruno
+Carla
+Diogo"></textarea>
+
+        <div class="options">
+          <label class="switch" title="Prevent tiny mutual loops like A↔B">
+            <input type="checkbox" id="avoidMutual" checked />
+            Avoid mutual pairs (A↔B)
+          </label>
+
+          <label class="switch" title="Show the plain text under each QR (for printing/debug)">
+            <input type="checkbox" id="showText" />
+            Show text under QR
+          </label>
+
+          <span class="tiny">Tip: Shuffle by clicking “Regenerate” again.</span>
+        </div>
+
+        <div class="row">
+          <button class="btn" id="generateBtn">Generate</button>
+          <button class="btn secondary" id="clearBtn">Clear</button>
+        </div>
+
+        <div id="msg" class="note">⚠️ Keep QR contents private — have each person scan only their own code.</div>
+        <div id="err" class="error" aria-live="polite"></div>
+      </section>
+
+      <section>
+        <div id="cards" class="cards" aria-live="polite"></div>
+      </section>
+    </div>
+
+    <footer>Made for GitHub Pages — all in your browser, nothing uploaded.</footer>
+  </div>
+
+  <!-- QRCode.js (lightweight, MIT) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-Mw7nE7l8GqZB8aQ6pQ0hJbK3cWq8iEo7v9qNYk9b0g4Hq8E2g8gS6m3cjc3H5cYkqkQm5cO9bCk6YFz8bUp5wQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script>
+    const namesEl = document.getElementById('names');
+    const cardsEl = document.getElementById('cards');
+    const errEl = document.getElementById('err');
+    const avoidMutualEl = document.getElementById('avoidMutual');
+    const showTextEl = document.getElementById('showText');
+    const genBtn = document.getElementById('generateBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    genBtn.addEventListener('click', () => {
+      errEl.textContent = '';
+      const list = parseNames(namesEl.value);
+      if (list.length < 2) {
+        errEl.textContent = 'Enter at least 2 distinct names.';
+        cardsEl.innerHTML = '';
+        return;
+      }
+      const unique = [...new Set(list.map(s => s.trim()))].filter(Boolean);
+      if (unique.length !== list.length) {
+        errEl.textContent = 'Duplicate names detected. Duplicates were removed — please confirm.';
+      }
+      if (unique.length < 2) {
+        cardsEl.innerHTML = '';
+        return;
+      }
+
+      const pairing = makePairing(unique, { avoidMutual: avoidMutualEl.checked });
+      if (!pairing) {
+        errEl.textContent = 'Could not find a valid pairing after several tries. Try again.';
+        cardsEl.innerHTML = '';
+        return;
+      }
+      renderCards(unique, pairing, showTextEl.checked);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      namesEl.value = '';
+      cardsEl.innerHTML = '';
+      errEl.textContent = '';
+    });
+
+    showTextEl.addEventListener('change', () => {
+      document.querySelectorAll('.hiddenText').forEach(el => {
+        el.style.display = showTextEl.checked ? 'block' : 'none';
+      });
+    });
+
+    function parseNames(raw) {
+      return raw.split('\n').map(s => s.trim()).filter(Boolean);
+    }
+
+    // Generate a derangement with optional avoidance of 2-cycles (mutual pairs).
+    function makePairing(names, { avoidMutual = true } = {}) {
+      const maxAttempts = 500;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const recipients = shuffle(names.slice());
+        // Fix self-assignments by swapping with someone else if needed
+        for (let i = 0; i < names.length; i++) {
+          if (recipients[i] === names[i]) {
+            // find someone else to swap with
+            let j = (i + 1) % names.length;
+            if (recipients[j] === names[j]) {
+              // find any j that doesn't cause equality
+              j = findSwapIndex(i, recipients, names);
+              if (j === -1) break; // fail this attempt
+            }
+            [recipients[i], recipients[j]] = [recipients[j], recipients[i]];
+          }
+        }
+        // Check constraints
+        if (!hasSelfMatch(names, recipients) && (!avoidMutual || !hasMutual(names, recipients))) {
+          // build map giver -> recipient
+          const map = new Map();
+          names.forEach((giver, idx) => map.set(giver, recipients[idx]));
+          return map;
+        }
+      }
+      return null;
+    }
+
+    function hasSelfMatch(a, b) {
+      for (let i = 0; i < a.length; i++) if (a[i] === b[i]) return true;
+      return false;
+    }
+    function hasMutual(names, recipients) {
+      // if a gives to b and b gives to a (i != j)
+      const pos = new Map();
+      names.forEach((n, i) => pos.set(n, i));
+      for (let i = 0; i < names.length; i++) {
+        const giver = names[i];
+        const recv = recipients[i];
+        const j = pos.get(recv);
+        if (j != null && recipients[j] === giver && i !== j) return true;
+      }
+      return false;
+    }
+    function findSwapIndex(i, recipients, names) {
+      for (let j = 0; j < names.length; j++) {
+        if (j === i) continue;
+        const ri = recipients[i], rj = recipients[j];
+        // After swap, neither should equal their own name
+        if (rj !== names[i] && ri !== names[j]) return j;
+      }
+      return -1;
+    }
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function renderCards(names, pairing, showText) {
+      cardsEl.innerHTML = '';
+      names.forEach(giver => {
+        const recipient = pairing.get(giver);
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const who = document.createElement('div');
+        who.className = 'who';
+        who.textContent = giver;
+        card.appendChild(who);
+
+        const qrWrap = document.createElement('div');
+        qrWrap.className = 'qr';
+        const qrDiv = document.createElement('div');
+        qrWrap.appendChild(qrDiv);
+        card.appendChild(qrWrap);
+
+        const text = `GIVER: ${giver}\nGive a present to: ${recipient}`;
+        // Generate QR
+        new QRCode(qrDiv, {
+          text,
+          width: 180,
+          height: 180,
+          correctLevel: QRCode.CorrectLevel.M
+        });
+
+        const hidden = document.createElement('div');
+        hidden.className = 'hiddenText';
+        hidden.style.display = showText ? 'block' : 'none';
+        hidden.textContent = text;
+        card.appendChild(hidden);
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.textContent = 'Scan privately to reveal your assignment.';
+        card.appendChild(meta);
+
+        cardsEl.appendChild(card);
+      });
+    }
+  </script>
+</body>
+</html>
