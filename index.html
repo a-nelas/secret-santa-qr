@@ -152,6 +152,9 @@
       padding: 10px;
       min-height: 180px;
     }
+    /* Ensure the SVG fits the intended box */
+    .qr svg { width: 180px; height: 180px; }
+
     .meta {
       margin-top: auto;
       font-size: 12px; color: var(--muted);
@@ -187,40 +190,38 @@
 </head>
 <body>
   <header>
-    <h1>Secret Santa — QR Codes</h1>
-    <p class="sub">Paste participant names (one per line). We’ll generate a no-self-match pairing and one QR code per person.<br/>
-      Each QR contains the giver’s name and who they should give a present to.</p>
+    <h1>Amigo Secret — com códigos QR</h1>
+    <p class="sub">Cole os nomes dos participantes. Vamos gerar atribuições sem repetição e um código QR para cada pessoa.<br/>
+      Cada código QR contém o nome de quem oferece e de quem irá receber a prenda.</p>
   </header>
 
   <div class="container">
     <div class="panel grid">
       <section>
-        <label for="names">Names (one per line)</label>
-        <textarea id="names" placeholder="Alice
-Bruno
-Carla
-Diogo"></textarea>
+        <label for="names">Nomes (um por linha)</label>
+        <textarea id="names" placeholder="André
+Idiota
+Ricardo
+João"></textarea>
 
         <div class="options">
           <label class="switch" title="Prevent tiny mutual loops like A↔B">
             <input type="checkbox" id="avoidMutual" checked />
-            Avoid mutual pairs (A↔B)
+            Prevenir pares (A↔B) ou ciclos pequenos
           </label>
 
           <label class="switch" title="Show the plain text under each QR (for printing/debug)">
             <input type="checkbox" id="showText" />
-            Show text under QR
+            Mostrar texto por debaixo do código QR (debug)
           </label>
-
-          <span class="tiny">Tip: Shuffle by clicking “Regenerate” again.</span>
         </div>
 
         <div class="row">
-          <button class="btn" id="generateBtn">Generate</button>
-          <button class="btn secondary" id="clearBtn">Clear</button>
+          <button class="btn" id="generateBtn">Gerar código</button>
+          <button class="btn secondary" id="clearBtn">Limpar</button>
         </div>
 
-        <div id="msg" class="note">⚠️ Keep QR contents private — have each person scan only their own code.</div>
+        <div id="msg" class="note">⚠️ Mantenha o conteúdo dos QR privado — cada pessoa deve digitalizar apenas o seu próprio código.</div>
         <div id="err" class="error" aria-live="polite"></div>
       </section>
 
@@ -229,11 +230,11 @@ Diogo"></textarea>
       </section>
     </div>
 
-    <footer>Made for GitHub Pages — all in your browser, nothing uploaded.</footer>
+    <footer>Feito para GitHub Pages.</footer>
   </div>
 
-  <!-- QRCode.js (lightweight, MIT) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-Mw7nE7l8GqZB8aQ6pQ0hJbK3cWq8iEo7v9qNYk9b0g4Hq8E2g8gS6m3cjc3H5cYkqkQm5cO9bCk6YFz8bUp5wQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- UTF-8 capable QR code generator -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 
   <script>
     const namesEl = document.getElementById('names');
@@ -294,19 +295,15 @@ Diogo"></textarea>
         // Fix self-assignments by swapping with someone else if needed
         for (let i = 0; i < names.length; i++) {
           if (recipients[i] === names[i]) {
-            // find someone else to swap with
             let j = (i + 1) % names.length;
             if (recipients[j] === names[j]) {
-              // find any j that doesn't cause equality
               j = findSwapIndex(i, recipients, names);
-              if (j === -1) break; // fail this attempt
+              if (j === -1) break;
             }
             [recipients[i], recipients[j]] = [recipients[j], recipients[i]];
           }
         }
-        // Check constraints
         if (!hasSelfMatch(names, recipients) && (!avoidMutual || !hasMutual(names, recipients))) {
-          // build map giver -> recipient
           const map = new Map();
           names.forEach((giver, idx) => map.set(giver, recipients[idx]));
           return map;
@@ -320,7 +317,6 @@ Diogo"></textarea>
       return false;
     }
     function hasMutual(names, recipients) {
-      // if a gives to b and b gives to a (i != j)
       const pos = new Map();
       names.forEach((n, i) => pos.set(n, i));
       for (let i = 0; i < names.length; i++) {
@@ -335,7 +331,6 @@ Diogo"></textarea>
       for (let j = 0; j < names.length; j++) {
         if (j === i) continue;
         const ri = recipients[i], rj = recipients[j];
-        // After swap, neither should equal their own name
         if (rj !== names[i] && ri !== names[j]) return j;
       }
       return -1;
@@ -350,6 +345,10 @@ Diogo"></textarea>
 
     function renderCards(names, pairing, showText) {
       cardsEl.innerHTML = '';
+
+      // Ensure UTF-8 for qrcode-generator
+      qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+
       names.forEach(giver => {
         const recipient = pairing.get(giver);
         const card = document.createElement('div');
@@ -366,19 +365,20 @@ Diogo"></textarea>
         qrWrap.appendChild(qrDiv);
         card.appendChild(qrWrap);
 
-        const text = `GIVER: ${giver}\nGive a present to: ${recipient}`;
-        // Generate QR
-        new QRCode(qrDiv, {
-          text,
-          width: 180,
-          height: 180,
-          correctLevel: QRCode.CorrectLevel.M
-        });
+        const payload = `${giver} dá prenda a ${recipient}`;
+
+        // Build QR (auto version; 'M' error correction)
+        const qr = qrcode(0, 'M');
+        qr.addData(payload, 'Byte');
+        qr.make();
+
+        // SVG output (crisp for print)
+        qrDiv.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2 });
 
         const hidden = document.createElement('div');
         hidden.className = 'hiddenText';
         hidden.style.display = showText ? 'block' : 'none';
-        hidden.textContent = text;
+        hidden.textContent = payload;
         card.appendChild(hidden);
 
         const meta = document.createElement('div');
