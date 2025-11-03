@@ -249,13 +249,13 @@ João"></textarea>
       errEl.textContent = '';
       const list = parseNames(namesEl.value);
       if (list.length < 2) {
-        errEl.textContent = 'Enter at least 2 distinct names.';
+        errEl.textContent = 'Introduzir 2 nomes no minímo.';
         cardsEl.innerHTML = '';
         return;
       }
       const unique = [...new Set(list.map(s => s.trim()))].filter(Boolean);
       if (unique.length !== list.length) {
-        errEl.textContent = 'Duplicate names detected. Duplicates were removed — please confirm.';
+        errEl.textContent = 'Nomes em duplicado! Os códigos em duplicado não foram gerados.';
       }
       if (unique.length < 2) {
         cardsEl.innerHTML = '';
@@ -264,7 +264,7 @@ João"></textarea>
 
       const pairing = makePairing(unique, { avoidMutual: avoidMutualEl.checked });
       if (!pairing) {
-        errEl.textContent = 'Could not find a valid pairing after several tries. Try again.';
+        errEl.textContent = 'Não foi possível encontrar uma solução.';
         cardsEl.innerHTML = '';
         return;
       }
@@ -380,11 +380,6 @@ João"></textarea>
         hidden.style.display = showText ? 'block' : 'none';
         hidden.textContent = payload;
         card.appendChild(hidden);
-
-        const meta = document.createElement('div');
-        meta.className = 'meta';
-        meta.textContent = 'Scan privately to reveal your assignment.';
-        card.appendChild(meta);
 
         cardsEl.appendChild(card);
       });
